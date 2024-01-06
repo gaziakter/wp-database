@@ -96,3 +96,23 @@ function wp_database_flush_data() {
 }
 
 register_deactivation_hook( __FILE__, "wp_database_flush_data" );
+
+/** Create an menu on dashboard */
+add_action( 'admin_menu', function () {
+	add_menu_page( 'WP Database', 'WP Database', 'manage_options', 'wpdatabase', 'wp_database_admin_page' );
+} );
+
+/** get data from database */
+function wp_database_admin_page(){
+	global $wpdb;
+	echo '<h2>DB Demo</h2>';
+	$id = $_GET['pid'] ?? 0;
+	$id = sanitize_key( $id );
+	if ( $id ) {
+		$result = $wpdb->get_row( "select * from {$wpdb->prefix}persons WHERE id='{$id}'" );
+		if($result){
+			echo "Name: {$result->name}<br/>";
+			echo "Email: {$result->email}<br/>";
+		}
+	}
+}
