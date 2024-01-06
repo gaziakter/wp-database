@@ -69,3 +69,30 @@ function wp_database_drop_column() {
 }
 
 add_action( "plugins_loaded", "wp_database_drop_column" );
+
+/** Inset data on activation the plugin */
+function wp_database_load_data() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'persons';
+	$wpdb->insert( $table_name, [
+		'name'  => 'John Doe',
+		'email' => 'john@doe.com'
+	] );
+	$wpdb->insert( $table_name, [
+		'name'  => 'Jane Doe',
+		'email' => 'jane@doe.com'
+	] );
+
+}
+
+register_activation_hook( __FILE__, "wp_database_load_data" );
+
+/** Flush data on deavtivation plugin */
+function wp_database_flush_data() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'persons';
+	$query      = "TRUNCATE TABLE {$table_name}";
+	$wpdb->query( $query );
+}
+
+register_deactivation_hook( __FILE__, "wp_database_flush_data" );
