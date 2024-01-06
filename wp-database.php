@@ -15,8 +15,26 @@
  * Domain Path:       /languages
  */
 
+ define( "WP_DATABASE_VERSION", "1.0" );
+
 function tabledata_load_textdomain() {
-	load_plugin_textdomain( 'tabledata_example', false, dirname( __FILE__ ) . "/languages" );
+	load_plugin_textdomain( 'wp-database', false, dirname( __FILE__ ) . "/languages" );
 }
 
 add_action( "plugins_loaded", "tabledata_load_textdomain" );
+
+
+function plugin_init_on_activation(){
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'persons';
+	$sql        = "CREATE TABLE {$table_name} (
+			id INT NOT NULL AUTO_INCREMENT,
+			name VARCHAR(250),
+			email VARCHAR(250),
+			PRIMARY KEY (id)
+	);";
+	require_once( ABSPATH . "wp-admin/includes/upgrade.php" );
+	dbDelta( $sql );
+
+}
+register_activation_hook( __FILE__, "plugin_init_on_activation" );
