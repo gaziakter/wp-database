@@ -15,7 +15,7 @@
  * Domain Path:       /languages
  */
 
- define( "WP_DATABASE_VERSION", "1.0" );
+ define( "WP_DATABASE_VERSION", "1.1" );
 
 function tabledata_load_textdomain() {
 	load_plugin_textdomain( 'wp-database', false, dirname( __FILE__ ) . "/languages" );
@@ -35,6 +35,20 @@ function plugin_init_on_activation(){
 	);";
 	require_once( ABSPATH . "wp-admin/includes/upgrade.php" );
 	dbDelta( $sql );
+
+	add_option( "wp_database_version", WP_DATABASE_VERSION );
+
+	if ( get_option( "wp_database_version" ) != WP_DATABASE_VERSION ) {
+		$sql = "CREATE TABLE {$table_name} (
+			id INT NOT NULL AUTO_INCREMENT,
+			name VARCHAR(250),
+			email VARCHAR(250),
+			age INT,
+			PRIMARY KEY (id)
+		);";
+		dbDelta( $sql );
+		update_option( "wp_database_version", WP_DATABASE_VERSION );
+	}
 
 }
 register_activation_hook( __FILE__, "plugin_init_on_activation" );
