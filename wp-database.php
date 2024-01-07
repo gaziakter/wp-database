@@ -115,4 +115,26 @@ function wp_database_admin_page(){
 			echo "Email: {$result->email}<br/>";
 		}
 	}
+	?>
+	<form action="" method="POST">
+		<?php wp_nonce_field( 'wp_database', 'nonce' ); ?>
+		Name: <input type="text" name="name"><br/>
+		Email: <input type="text" name="email"><br/>
+		<?php submit_button( "Add Record" ); ?>
+	</form>
+	<?php
+
+	if(isset($_POST['submit'])){
+
+		$nonce = sanitize_text_field( $_POST['nonce'] );
+		if(wp_verify_nonce( $nonce, 'wp_database2' )){
+			$name = sanitize_text_field( $_POST['name'] );
+			$email = sanitize_text_field( $_POST['email'] );
+
+			$wpdb->insert("{$wpdb->prefix}persons", ['name' =>$name, 'email' => $email]);
+
+		} else{
+			echo "You are not allowed to do this!";
+		}
+	}
 }
