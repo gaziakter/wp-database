@@ -116,14 +116,18 @@ function wp_database_admin_page(){
 		}
 	}
 	?>
-	<form action="" method="POST">
+	<div class="notice notice-success is-dismissible">
+		<p>Some Error Information</p>
+	</div>
+	<form action="<?php admin_url( 'admin-post.php' ) ?>" method="POST">
 		<?php wp_nonce_field( 'wp_database', 'nonce' ); ?>
+		<input type="hidden" name="action" value="dbbemo_add_record" >
 		Name: <input type="text" name="name"><br/>
 		Email: <input type="text" name="email"><br/>
 		<?php submit_button( "Add Record" ); ?>
 	</form>
 	<?php
-
+/** 
 	if(isset($_POST['submit'])){
 
 		$nonce = sanitize_text_field( $_POST['nonce'] );
@@ -137,4 +141,18 @@ function wp_database_admin_page(){
 			echo "You are not allowed to do this!";
 		}
 	}
+*/
 }
+
+add_action('admin_post_dbbemo_add_record', function(){
+	global $wpdb;
+	$nonce = sanitize_text_field( $_POST['nonce'] );
+		if(wp_verify_nonce( $nonce, 'wp_database' )){
+			$name = sanitize_text_field( $_POST['name'] );
+			$email = sanitize_text_field( $_POST['email'] );
+
+			$wpdb->insert("{$wpdb->prefix}persons", ['name' =>$name, 'email' => $email]);
+		} 
+
+		wp_redirect(admin_url('admin.php?page=wpdatabase'));
+});
