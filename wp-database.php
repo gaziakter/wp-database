@@ -1,33 +1,21 @@
 <?php
-/**
- * Plugin Name:       WP Database
- * Plugin URI:        https://classysystem.com/plugin/wp-column/
- * Description:       WordPress database usages
- * Version:           1.0.0
- * Requires at least: 5.2
- * Requires PHP:      7.2
- * Author:            Gazi Akter
- * Author URI:        https://gaziakter.com/
- * License:           GPL v2 or later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Update URI:        https://classysystem.com/
- * Text Domain:       wp-database
- * Domain Path:       /languages
- */
+/*
+Plugin Name: Wp Database
+Plugin URI: https://classysystem.com/
+Description: Using dynamic database 
+Version: 1.0
+Author: Gazi Akter
+Author URI: https://gaziakter.com/
+License: GPLv2 or later
+Text Domain: wp-database
+Domain Path: /languages/
+*/
 
- define( "WP_DATABASE_VERSION", "1.1" );
+define( "DBDEMO_DB_VERSION", "1.6" );
+require_once "class.dbdemousers.php";
 
-function wp_database_load_textdomain() {
-	load_plugin_textdomain( 'wp-database', false, dirname( __FILE__ ) . "/languages" );
-}
-
-add_action( "plugins_loaded", "wp_database_load_textdomain" );
-
-
-function plugin_init_on_activation(){
+function dbdemo_init() {
 	global $wpdb;
-
-	/** Create table and column */
 	$table_name = $wpdb->prefix . 'persons';
 	$sql        = "CREATE TABLE {$table_name} (
 			id INT NOT NULL AUTO_INCREMENT,
@@ -35,14 +23,12 @@ function plugin_init_on_activation(){
 			email VARCHAR(250),
 			PRIMARY KEY (id)
 	);";
-
 	require_once( ABSPATH . "wp-admin/includes/upgrade.php" );
 	dbDelta( $sql );
 
-	add_option( "wp_database_version", WP_DATABASE_VERSION );
+	add_option( "dbdemo_db_version", DBDEMO_DB_VERSION );
 
-	/**  Update version */
-	if ( get_option( "wp_database_version" ) != WP_DATABASE_VERSION ) {
+	if ( get_option( "dbdemo_db_version" ) != DBDEMO_DB_VERSION ) {
 		$sql = "CREATE TABLE {$table_name} (
 			id INT NOT NULL AUTO_INCREMENT,
 			name VARCHAR(250),
@@ -51,27 +37,33 @@ function plugin_init_on_activation(){
 			PRIMARY KEY (id)
 		);";
 		dbDelta( $sql );
-		update_option( "wp_database_version", WP_DATABASE_VERSION );
+		update_option( "dbdemo_db_version", DBDEMO_DB_VERSION );
 	}
 
 }
-register_activation_hook( __FILE__, "plugin_init_on_activation" );
 
-/** Table drop */
-function wp_database_drop_column() {
+register_activation_hook( __FILE__, "dbdemo_init" );
+
+function dbdemo_drop_column() {
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'persons';
-	if ( get_option( "wp_database_version" ) != WP_DATABASE_VERSION ) {
+	if ( get_option( "dbdemo_db_version" ) != DBDEMO_DB_VERSION ) {
 		$query = "ALTER TABLE {$table_name} DROP COLUMN age";
 		$wpdb->query( $query );
 	}
-	update_option( "wp_database_version", WP_DATABASE_VERSION );
+	update_option( "dbdemo_db_version", DBDEMO_DB_VERSION );
 }
 
-add_action( "plugins_loaded", "wp_database_drop_column" );
+add_action( "plugins_loaded", "dbdemo_drop_column" );
 
-/** Inset data on activation the plugin */
-function wp_database_load_data() {
+add_action( 'admin_enqueue_scripts', function ( $hook ) {
+	if ( "toplevel_page_dbdemo" == $hook ) {
+		wp_enqueue_style( 'dbdemo-style', plugin_dir_url( __FILE__ ) . 'assets/css/form.css' );
+	}
+} );
+
+
+function dbdemo_load_data() {
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'persons';
 	$wpdb->insert( $table_name, [
@@ -85,74 +77,113 @@ function wp_database_load_data() {
 
 }
 
-register_activation_hook( __FILE__, "wp_database_load_data" );
+register_activation_hook( __FILE__, "dbdemo_load_data" );
 
-/** Flush data on deavtivation plugin */
-function wp_database_flush_data() {
+function dbdemo_flush_data() {
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'persons';
 	$query      = "TRUNCATE TABLE {$table_name}";
 	$wpdb->query( $query );
 }
 
-register_deactivation_hook( __FILE__, "wp_database_flush_data" );
+register_deactivation_hook( __FILE__, "dbdemo_flush_data" );
 
-/** Create an menu on dashboard */
+
 add_action( 'admin_menu', function () {
-	add_menu_page( 'WP Database', 'WP Database', 'manage_options', 'wpdatabase', 'wp_database_admin_page' );
+	add_menu_page( 'DB Demo', 'DB Demo', 'manage_options', 'dbdemo', 'dbdemo_admin_page' );
 } );
 
-/** get data from database */
-function wp_database_admin_page(){
+function dbdemo_admin_page() {
 	global $wpdb;
+	if ( isset( $_GET['pid'] ) ) {
+		if ( ! isset( $_GET['n'] ) || ! wp_verify_nonce( $_GET['n'], "dbdemo_edit" ) ) {
+			wp_die( __( "Sorry you are not authorized to do this", "wp-database" ) );
+		}
+
+		if ( isset( $_GET['action'] ) && $_GET['action'] == 'delete' ) {
+			$wpdb->delete( "{$wpdb->prefix}persons", [ 'id' => sanitize_key( $_GET['pid'] ) ] );
+			$_GET['pid'] = null;
+		}
+	}
+
+
 	echo '<h2>DB Demo</h2>';
 	$id = $_GET['pid'] ?? 0;
 	$id = sanitize_key( $id );
 	if ( $id ) {
 		$result = $wpdb->get_row( "select * from {$wpdb->prefix}persons WHERE id='{$id}'" );
-		if($result){
-			echo "Name: {$result->name}<br/>";
-			echo "Email: {$result->email}<br/>";
-		}
 	}
 	?>
-	<div class="notice notice-success is-dismissible">
-		<p>Some Error Information</p>
-	</div>
-	<form action="<?php admin_url( 'admin-post.php' ) ?>" method="POST">
-		<?php wp_nonce_field( 'wp_database', 'nonce' ); ?>
-		<input type="hidden" name="action" value="dbbemo_add_record" >
-		Name: <input type="text" name="name"><br/>
-		Email: <input type="text" name="email"><br/>
-		<?php submit_button( "Add Record" ); ?>
-	</form>
+    <div class="form_box">
+        <div class="form_box_header">
+			<?php _e( 'Data Form', 'wp-database' ) ?>
+        </div>
+        <div class="form_box_content">
+            <form action="<?php echo admin_url( 'admin-post.php' ); ?>" method="POST">
+				<?php
+				wp_nonce_field( 'dbdemo', 'nonce' );
+				?>
+                <input type="hidden" name="action" value="dbdemo_add_record">
+                <label>
+                    <strong>Name</strong>
+                </label><br/>
+                <input type="text" name="name" class="form_text" value="<?php if ( $id ) {
+					echo $result->name;
+				} ?>"><br/>
+                <label>
+                    <strong>Email</strong>
+                </label><br/>
+                <input type="text" name="email" class="form_text" value="<?php if ( $id ) {
+					echo $result->email;
+				} ?>"><br/>
+
+				<?php
+				if ( $id ) {
+					echo '<input type="hidden" name="id" value="' . $id . '">';
+					submit_button( "Update Record" );
+				} else {
+					submit_button( "Add Record" );
+				}
+				?>
+            </form>
+        </div>
+    </div>
+    <div class="form_box" style="margin-top: 30px;">
+        <div class="form_box_header">
+			<?php _e( 'Users', 'wp-database' ) ?>
+        </div>
+        <div class="form_box_content">
+			<?php
+			global $wpdb;
+			$dbdemo_users = $wpdb->get_results( "SELECT id, name, email FROM {$wpdb->prefix}persons ORDER BY id DESC", ARRAY_A );
+			$dbtu         = new DBTableUsers( $dbdemo_users );
+			$dbtu->prepare_items();
+			$dbtu->display();
+			?>
+        </div>
+    </div>
 	<?php
-/** 
-	if(isset($_POST['submit'])){
 
-		$nonce = sanitize_text_field( $_POST['nonce'] );
-		if(wp_verify_nonce( $nonce, 'wp_database2' )){
-			$name = sanitize_text_field( $_POST['name'] );
-			$email = sanitize_text_field( $_POST['email'] );
 
-			$wpdb->insert("{$wpdb->prefix}persons", ['name' =>$name, 'email' => $email]);
-
-		} else{
-			echo "You are not allowed to do this!";
-		}
-	}
-*/
 }
 
-add_action('admin_post_dbbemo_add_record', function(){
+add_action( 'admin_post_dbdemo_add_record', function () {
 	global $wpdb;
 	$nonce = sanitize_text_field( $_POST['nonce'] );
-		if(wp_verify_nonce( $nonce, 'wp_database' )){
-			$name = sanitize_text_field( $_POST['name'] );
-			$email = sanitize_text_field( $_POST['email'] );
+	if ( wp_verify_nonce( $nonce, 'dbdemo' ) ) {
+		$name  = sanitize_text_field( $_POST['name'] );
+		$email = sanitize_text_field( $_POST['email'] );
+		$id    = sanitize_text_field( $_POST['id'] );
 
-			$wpdb->insert("{$wpdb->prefix}persons", ['name' =>$name, 'email' => $email]);
-		} 
+		if ( $id ) {
+			$wpdb->update( "{$wpdb->prefix}persons", [ 'name' => $name, 'email' => $email ], [ 'id' => $id ] );
+			$nonce = wp_create_nonce( "dbdemo_edit" );
+			wp_redirect( admin_url( 'admin.php?page=dbdemo&pid=' ) . $id . "&n={$nonce}" );
+		} else {
+			$wpdb->insert( "{$wpdb->prefix}persons", [ 'name' => $name, 'email' => $email ] );
+			wp_redirect( admin_url( 'admin.php?page=dbdemo' ) );
+		}
+	}
 
-		wp_redirect(admin_url('admin.php?page=wpdatabase'));
-});
+} );
+
